@@ -1,1 +1,157 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>競艇AI OCR版</title>
 
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
+
+<style>
+body{
+margin:0;
+font-family:-apple-system;
+background:#0f172a;
+color:white;
+padding:15px;
+}
+
+.card{
+background:#1e293b;
+padding:15px;
+border-radius:15px;
+margin-bottom:15px;
+}
+
+input,button{
+width:100%;
+padding:10px;
+margin-top:5px;
+border-radius:10px;
+border:none;
+}
+
+button{
+background:#06b6d4;
+color:white;
+font-weight:bold;
+}
+
+.result{
+margin-top:10px;
+font-size:18px;
+}
+
+img{
+width:100%;
+margin-top:10px;
+border-radius:10px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="card">
+<h2>🚤 OCR付き競艇AI</h2>
+</div>
+
+<div class="card">
+<input type="file" accept="image/*" onchange="loadImage(event)">
+<img id="preview">
+<button onclick="runOCR()">OCR読み取り</button>
+<div id="ocrText"></div>
+</div>
+
+<div id="inputs"></div>
+
+<div class="card">
+<button onclick="analyze()">分析</button>
+<div class="result" id="result"></div>
+</div>
+
+<script>
+
+function createInputs(){
+let html="";
+for(let i=1;i<=6;i++){
+html+=`
+<div class="card">
+<h3>${i}号艇</h3>
+<input id="nat${i}" placeholder="全国勝率">
+<input id="motor${i}" placeholder="モーター">
+<input id="st${i}" placeholder="ST">
+</div>`;
+}
+document.getElementById("inputs").innerHTML=html;
+}
+
+function loadImage(e){
+const reader=new FileReader();
+reader.onload=function(){
+document.getElementById("preview").src=reader.result;
+}
+reader.readAsDataURL(e.target.files[0]);
+}
+
+async function runOCR(){
+let img=document.getElementById("preview");
+
+document.getElementById("ocrText").innerHTML="読み取り中...";
+
+const { data:{ text } } = await Tesseract.recognize(
+img.src,
+'jpn+eng'
+);
+
+document.getElementById("ocrText").innerText=text;
+
+autoInput(text);
+}
+
+function autoInput(text){
+
+// 数字だけ抽出
+let nums = text.match(/\d+\.?\d*/g);
+
+if(!nums) return;
+
+let idx=0;
+
+for(let i=1;i<=6;i++){
+if(nums[idx]) document.getElementById(`nat${i}`).value = nums[idx++];
+if(nums[idx]) document.getElementById(`motor${i}`).value = nums[idx++];
+if(nums[idx]) document.getElementById(`st${i}`).value = nums[idx++];
+}
+
+}
+
+function analyze(){
+let boats=[];
+
+for(let i=1;i<=6;i++){
+let nat=parseFloat(document.getElementById(`nat${i}`).value)||0;
+let motor=parseFloat(document.getElementById(`motor${i}`).value)||0;
+let st=parseFloat(document.getElementById(`st${i}`).value)||0.2;
+
+let score = nat*3 + motor*0.5 + (0.2-st)*100;
+
+if(i==1) score+=20;
+
+boats.push({lane:i,score});
+}
+
+boats.sort((a,b)=>b.score-a.score);
+
+document.getElementById("result").innerHTML=
+`1着:${boats[0].lane}<br>
+2着:${boats[1].lane}<br>
+3着:${boats[2].lane}`;
+}
+
+createInputs();
+
+</script>
+
+</body>
+</html>
