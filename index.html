@@ -1,1 +1,167 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>競艇AI予想 最強版</title>
 
+<style>
+body{
+margin:0;
+font-family:-apple-system;
+background:#0f172a;
+color:white;
+padding:15px;
+}
+
+.card{
+background:#1e293b;
+padding:15px;
+border-radius:15px;
+margin-bottom:15px;
+}
+
+h2,h3{margin:5px 0;}
+
+input,button{
+width:100%;
+padding:10px;
+margin-top:5px;
+border-radius:10px;
+border:none;
+font-size:16px;
+}
+
+button{
+background:#06b6d4;
+color:white;
+font-weight:bold;
+}
+
+.result{
+font-size:20px;
+margin-top:10px;
+line-height:1.6;
+}
+
+img{
+width:100%;
+border-radius:10px;
+margin-top:10px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="card">
+<h2>🚤 競艇AI予想 最強版</h2>
+<p>出走表を入力 or 画像で確認しながら分析</p>
+</div>
+
+<div class="card">
+<h3>画像読み込み</h3>
+<input type="file" accept="image/*" onchange="loadImage(event)">
+<img id="preview" style="display:none;">
+</div>
+
+<div id="inputs"></div>
+
+<div class="card">
+<button onclick="analyze()">AI分析する</button>
+<div class="result" id="result"></div>
+</div>
+
+<script>
+
+function createInputs(){
+let html="";
+for(let i=1;i<=6;i++){
+html+=`
+<div class="card">
+<h3>${i}号艇</h3>
+<input id="nat${i}" placeholder="全国勝率">
+<input id="local${i}" placeholder="当地勝率">
+<input id="motor${i}" placeholder="モーター2連率">
+<input id="st${i}" placeholder="ST">
+<input id="time${i}" placeholder="展示タイム">
+</div>`;
+}
+document.getElementById("inputs").innerHTML=html;
+}
+
+function loadImage(e){
+const reader=new FileReader();
+reader.onload=function(){
+const img=document.getElementById("preview");
+img.src=reader.result;
+img.style.display="block";
+}
+reader.readAsDataURL(e.target.files[0]);
+}
+
+function analyze(){
+let boats=[];
+
+for(let i=1;i<=6;i++){
+let nat=parseFloat(document.getElementById(`nat${i}`).value)||0;
+let local=parseFloat(document.getElementById(`local${i}`).value)||0;
+let motor=parseFloat(document.getElementById(`motor${i}`).value)||0;
+let st=parseFloat(document.getElementById(`st${i}`).value)||0.2;
+let time=parseFloat(document.getElementById(`time${i}`).value)||6.8;
+
+let score=0;
+
+// イン有利
+if(i==1) score+=20;
+if(i==2) score+=10;
+
+// 勝率
+score+=nat*3;
+score+=local*2;
+
+// モーター
+score+=motor*0.6;
+
+// ST（早いほど良い）
+score+=(0.2-st)*80;
+
+// 展示タイム（速いほど良い）
+score+=(6.9-time)*40;
+
+boats.push({lane:i,score});
+}
+
+boats.sort((a,b)=>b.score-a.score);
+
+let f=boats[0].lane;
+let s=boats[1].lane;
+let t=boats[2].lane;
+
+// 本命 or 穴
+let diff=boats[0].score-boats[1].score;
+let type="混戦";
+if(diff>8 && f==1) type="本命";
+if(diff<3) type="荒れ";
+
+// 出力
+document.getElementById("result").innerHTML=
+`🏆 1着候補：${f}<br>
+🥈 2着候補：${s}<br>
+🥉 3着候補：${t}<br><br>
+
+📊 レース傾向：${type}<br><br>
+
+🔥 本命ライン：${f}-${s}-${t}<br>
+⚠ 穴ライン：${s}-${t}-${f}<br><br>
+
+▶ 2連単：${f}-${s} / ${f}-${t}<br>
+▶ 3連単：${f}-${s}-${t} / ${f}-${t}-${s}`;
+}
+
+createInputs();
+
+</script>
+
+</body>
+</html>
